@@ -93,7 +93,7 @@
     </div>
 
     <div class="tabs">
-        <div id="tab-user" class="tab active" onclick="switchTab('user-panel')">🙋‍♂️ 사용자 베팅룸</div>
+        <div id="tab-user" class="tab active" onclick="switchTab('user-panel')">🙋‍♂️ 사용자 배팅룸</div>
         <div id="tab-admin" class="tab" onclick="tryAccessAdmin()">⚙️ 실험 관리자 모드</div>
     </div>
 
@@ -115,15 +115,15 @@
                 <h3 id="optA-name">찬성 (Yes)</h3>
                 <div class="odds-num" id="oddsA-disp">1.00배</div>
                 <p>총 배팅액: <span id="totalA-disp">0</span>원</p>
-                <input type="number" id="amount-A" placeholder="베팅 금액 입력" min="100">
-                <button onclick="placeBet('A')">베팅하기</button>
+                <input type="number" id="amount-A" placeholder="배팅 금액 입력" min="100">
+                <button onclick="placeBet('A')">배팅하기</button>
             </div>
             <div class="card option-B">
                 <h3 id="optB-name">반대 (No)</h3>
                 <div class="odds-num" id="oddsB-disp">1.00배</div>
                 <p>총 배팅액: <span id="totalB-disp">0</span>원</p>
-                <input type="number" id="amount-B" placeholder="베팅 금액 입력" min="100">
-                <button onclick="placeBet('B')" style="background:#2ecc71;">베팅하기</button>
+                <input type="number" id="amount-B" placeholder="배팅 금액 입력" min="100">
+                <button onclick="placeBet('B')" style="background:#2ecc71;">배팅하기</button>
             </div>
         </div>
     </div>
@@ -136,14 +136,14 @@
         </div>
 
         <div class="admin-box" style="background:#f4f6f7; border: 1px solid #bdc3c7;">
-            <h3 style="margin-top:0; color:#34495e;">👁️ 학생 실시간 베팅 및 자산 현황판</h3>
+            <h3 style="margin-top:0; color:#34495e;">👁️ 학생 실시간 배팅 및 자산 현황판</h3>
             <table class="dash-table">
                 <thead>
                     <tr>
                         <th>참가 학생 이름</th>
                         <th>현재 보유 자산</th>
-                        <th>이번 라운드 베팅 (찬성)</th>
-                        <th>이번 라운드 베팅 (반대)</th>
+                        <th>이번 라운드 배팅 (찬성)</th>
+                        <th>이번 라운드 배팅 (반대)</th>
                     </tr>
                 </thead>
                 <tbody id="admin-dash-rows">
@@ -176,8 +176,8 @@
                 <option value="2">2 라운드 (+3,000원 추가)</option>
                 <option value="3">3 라운드 (+4,000원 추가)</option>
             </select>
-            <button onclick="controlRound(true)" style="background:#2ecc71;">베팅 시작 (Open & 자산지급)</button>
-            <button onclick="controlRound(false)" style="background:#e74c3c;">베팅 중지 (Close)</button>
+            <button onclick="controlRound(true)" style="background:#2ecc71;">배팅 시작 (Open & 자산지급)</button>
+            <button onclick="controlRound(false)" style="background:#e74c3c;">배팅 중지 (Close)</button>
         </div>
 
         <div class="admin-box">
@@ -255,7 +255,7 @@
         }
     });
 
-    // 📊 관리자 현황판 테이블 실시간 그리기 🌟
+    // 📊 관리자 현황판 테이블 실시간 그리기
     socket.on('admin_dashboard_update', (dashboardData) => {
         const tbody = document.getElementById('admin-dash-rows');
         if(!tbody) return;
@@ -278,7 +278,7 @@
         tbody.innerHTML = html;
     });
 
-    // 🏆 3라운드 정산 시 최종 순위표 화면에 띄우기 🌟
+    // 🏆 3라운드 정산 시 최종 순위표 화면에 띄우기
     socket.on('final_leaderboard', (leaderboard) => {
         const tbody = document.getElementById('leaderboard-rows');
         let html = '';
@@ -361,6 +361,7 @@
         document.getElementById(inputId).value = '';
     }
 
+    // 스파이 지정
     function assignSpy() {
         const spySelect = document.getElementById('admin-spy-select');
         const targetId = spySelect.value;
@@ -372,6 +373,7 @@
         }
     }
 
+    // 주제 설정
     function setTopic() {
         if(confirm("주의: 모든 자산 및 데이터가 완전 초기화됩니다. 새로 실험을 개설하시겠습니까?")) {
             const topic = document.getElementById('admin-topic').value;
@@ -381,11 +383,13 @@
         }
     }
 
+    // 라운드 제어
     function controlRound(isOpen) {
         const round = document.getElementById('admin-round-select').value;
         socket.emit('admin_change_round', { round, isOpen });
     }
 
+    // 결과 정산
     function settleMarket(winningOption) {
         if(confirm(`이번 라운드 결과를 [${winningOption}] 승리로 정산하시겠습니까?`)) {
             socket.emit('admin_settle', winningOption);
