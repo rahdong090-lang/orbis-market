@@ -10,7 +10,7 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// 폴리마켓 상태 관리 데이터
+// 폴리마켓 상태 관리 데이터 (원본 구조 100% 유지)
 let marketState = {
     currentRound: 0, 
     topic: "여기에 관리자가 설정한 주제가 표시됩니다.",
@@ -21,7 +21,7 @@ let marketState = {
     }
 };
 
-// 실시간 실험용 데이터 저장소 (서버 리스타트 전까지 절대 자동 초기화 안 됨)
+// 실시간 실험용 데이터 저장소 (원본 구조 100% 유지)
 let userAssets = {};   
 let userBets = {};     
 let userNames = {};    
@@ -41,7 +41,7 @@ function calculateOdds() {
     return { oddsA, oddsB, ratioA, ratioB };
 }
 
-// 관리자 대시보드 실시간 브로드캐스트
+// 관리자 대시보드 실시간 브로드캐스트 (구조 유지)
 function emitAdminDashboard() {
     const count = io.sockets.sockets.size;
     let activeUsersList = [];
@@ -65,7 +65,7 @@ function emitAdminDashboard() {
     io.emit('admin_dashboard_update', dashboardData);
 }
 
-// 최종 3라운드 정산 후 순위표 브로드캐스트 🏆
+// 최종 3라운드 정산 후 순위표 브로드캐스트 🏆 (원본 유지)
 function emitFinalLeaderboard() {
     let leaderboard = [];
     for (let id in userNames) {
@@ -88,7 +88,6 @@ io.on('connection', (socket) => {
 
         userNames[socket.id] = nickname;
         
-        // 새로 들어온 소켓만 0원 기초자산 세팅 (기존 자산이 있다면 절대 초기화 안 함)
         if (userAssets[socket.id] === undefined) {
             userAssets[socket.id] = 0;
         }
@@ -116,22 +115,18 @@ io.on('connection', (socket) => {
         emitAdminDashboard();
     });
 
-    // [관리자] 새로운 예측 주제 등록 (★ 기존 유저 자산은 그대로 유지!)
+    // [관리자] 새로운 예측 주제 등록
     socket.on('admin_set_topic', (data) => {
         marketState.topic = data.topic;
         marketState.options.A.name = data.optA;
         marketState.options.B.name = data.optB;
-        
-        // 새로운 완전히 다른 대주제가 발제될 때만 판돈 초기화
         marketState.options.A.totalBet = 0;
         marketState.options.B.totalBet = 0;
         marketState.currentRound = 0;
         marketState.isOrderOpen = false;
         
-        // 이번 주제 베팅 현황만 초기화
         for (let id in userBets) { userBets[id] = { A: 0, B: 0 }; }
         
-        // ★ 새로운 주제가 등록되었으므로 보조금 지급 권한(1, 2, 3라운드)을 다시 true로 리셋!
         roundGiven = { 1: false, 2: false, 3: false };
         spyClientId = null; 
 
@@ -146,7 +141,6 @@ io.on('connection', (socket) => {
         if (!targetId) return;
         spyClientId = targetId;
         
-        // 임명 시점 즉시 버프 (보유 중인 자산 3배 증가)
         userAssets[spyClientId] = (userAssets[spyClientId] || 0) * 3;
 
         io.emit('force_asset_sync', userAssets);
@@ -160,7 +154,6 @@ io.on('connection', (socket) => {
         marketState.currentRound = nextRound;
         marketState.isOrderOpen = data.isOpen;
 
-        // 베팅을 Open할 때 해당 라운드 보조금을 아직 안 줬다면 지급 시작!
         if (data.isOpen && !roundGiven[nextRound]) {
             let baseMoney = 0;
             if (nextRound === 1) baseMoney = 3000;
@@ -168,31 +161,26 @@ io.on('connection', (socket) => {
             else if (nextRound === 3) baseMoney = 4000;
 
             if (baseMoney > 0) {
-                // 실제로 존재하는 유저들의 닉네임 장부를 돌면서 지갑에 누적 합산!
                 for (let id in userNames) {
                     const multiplier = (id === spyClientId) ? 3 : 1;
                     const finalAddition = baseMoney * multiplier;
-                    
-                    // 기존 자산에 라운드별 금액(스파이는 3배)을 확실하게 유실 없이 더해줌
                     userAssets[id] = (userAssets[id] || 0) + finalAddition;
                 }
-                roundGiven[nextRound] = true; // 해당 라운드 중복 지급 방지 마킹
+                roundGiven[nextRound] = true; 
             }
         }
 
-        // ★ 핵심 변경 사항: 다음 라운드로 전환되더라도 totalBet 판돈과 배당률을 초기화하지 않습니다.
         io.emit('market_update', { marketState, odds: calculateOdds() });
         io.emit('force_asset_sync', userAssets); 
         emitAdminDashboard();
     });
 
-    // [관리자] 결과 정산 및 배당금 지급
+    // [관리자] 결과 정산 및 배당금 지급 (판돈 유지 기능 유지)
     socket.on('admin_settle', (winningOption) => {
         const odds = calculateOdds();
         const winOdds = parseFloat(winningOption === 'A' ? odds.oddsA : odds.oddsB);
         const settledRound = marketState.options;
         
-        // 배당금 지급 정산 루프
         for (let id in userBets) {
             const betAmount = userBets[id][winningOption]; 
             if (betAmount > 0) {
@@ -203,13 +191,11 @@ io.on('connection', (socket) => {
 
         const currentRoundBeforeSettle = marketState.currentRound;
 
-        // ★ [핵심 요구사항 반영]: 정산 시 다음 라운드 연속 거래를 위해 총판돈(totalBet)을 0으로 리셋하던 코드를 전면 제거했습니다.
-        // marketState.options.A.totalBet = 0; -> 제거
-        // marketState.options.B.totalBet = 0; -> 제거
+        // ★ [판돈 및 배당률 유지]: 연속 라운드 거래를 위해 totalBet을 리셋하던 원본 삭제 유지
+        // marketState.options.A.totalBet = 0;
+        // marketState.options.B.totalBet = 0;
         
         marketState.isOrderOpen = false;
-        
-        // 유저들의 '현재 배팅 제출액' 장부만 포맷하여 다음 라운드에서 새로 배팅을 누적할 수 있게 유도
         for (let id in userBets) { userBets[id] = { A: 0, B: 0 }; }
 
         io.emit('experiment_result', {
@@ -217,7 +203,7 @@ io.on('connection', (socket) => {
             winnerName: settledRound[winningOption].name,
             finalOdds: winOdds,
             marketState,
-            odds: calculateOdds() // 기존 판돈이 누적 유지된 배당률 송신
+            odds: calculateOdds()
         });
         io.emit('force_asset_sync', userAssets);
         emitAdminDashboard();
@@ -227,10 +213,10 @@ io.on('connection', (socket) => {
         }
     });
 
-    // [사용자] 배팅 처리
+    // [사용자] 베팅 처리 (★ 문구 '베팅'으로 완벽 수정)
     socket.on('user_bet', (data) => {
         if (!marketState.isOrderOpen) {
-            socket.emit('alert', '현재 라운드 배팅이 닫혀있습니다.');
+            socket.emit('alert', '현재 라운드 베팅이 닫혀있습니다.');
             return;
         }
 
