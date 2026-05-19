@@ -37,6 +37,16 @@
             border-bottom: 2px solid #3498db;
             font-weight: bold;
         }
+        .tab-content {
+            display: none;
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 0 0 5px 5px;
+        }
+        .tab-content.active {
+            display: block;
+        }
         .user-info {
             background-color: #e8f4fd;
             padding: 15px;
@@ -126,106 +136,211 @@
         }
         .btn-yes { background-color: #3498db; }
         .btn-no { background-color: #2ecc71; }
+        
+        /* 기존 닉네임 입력 대기화면 모달 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+        }
+        .modal-content {
+            background: white; padding: 30px; border-radius: 10px; text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-content input {
+            padding: 10px; font-size: 16px; width: 200px; margin-bottom: 15px;
+            border: 1px solid #ccc; border-radius: 5px;
+        }
+        .modal-content button {
+            padding: 10px 20px; font-size: 16px; background-color: #3498db;
+            color: white; border: none; border-radius: 5px; cursor: pointer;
+        }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
+    <div id="nickModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>ORBIS 마켓 접속 닉네임 설정</h3>
+            <p>실험에 사용할 이름을 입력해주세요.</p>
+            <input type="text" id="nickInput" placeholder="이름 입력 (예: 나동휘)">
+            <br>
+            <button onclick="setNickname()">접속하기</button>
+        </div>
+    </div>
+
     <div class="status-bar">
-        상태: 교역 중 (Open)
+        상태: 교역 중 (Open) | <span id="roundText">제 1라운드</span>
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active">🙋‍♂️ 사용자 배팅룸</button>
-        <button class="tab-btn">⚙️ 실험 관리자 모드</button>
+        <button id="tabUserBtn" class="tab-btn active" onclick="switchTab('user')">🙋‍♂️ 사용자 배팅룸</button>
+        <button id="tabAdminBtn" class="tab-btn" onclick="switchTab('admin')">⚙️ 실험 관리자 모드</button>
     </div>
 
-    <div class="user-info">
-        👤 내 접속 이름: <span id="userName">나동휘</span> | 
-        💰 나의 가상 보유 자산: <span id="userMoney">3,000</span> 원
-        <p class="notice">(라운드가 시작되면 보조금이 기존 잔액에 누적 합산됩니다.)</p>
-    </div>
-
-    <h2>실시간 여론 예측 현황</h2>
-    
-    <div class="progress-container">
-        <div id="yesProgress">찬성 (Yes) (44.4%)</div>
-        <div id="noProgress">반대 (No) (55.6%)</div>
-    </div>
-
-    <div class="card-container">
-        <div class="card yes-card">
-            <h3>찬성 (Yes)</h3>
-            <div class="dividend" id="yesOdds">2.25배</div>
-            <div class="total-amount">총 배팅액: <span id="totalYesAmount">400</span>원</div>
-            <div class="input-group">
-                <input type="number" id="yesInput" placeholder="배팅 금액 입력">
-                <button onclick="placeBet('yes')" class="btn-yes">배팅하기</button>
-            </div>
+    <div id="userTab" class="tab-content active">
+        <div class="user-info">
+            👤 내 접속 이름: <span id="userName">미설정</span> | 
+            💰 나의 가상 보유 자산: <span id="userMoney">3,000</span> 원
+            <p class="notice">(라운드가 시작되면 보조금이 기존 잔액에 누적 합산됩니다.)</p>
         </div>
 
-        <div class="card no-card">
-            <h3>반대 (No)</h3>
-            <div class="dividend" id="noOdds">1.80배</div>
-            <div class="total-amount">총 배팅액: <span id="totalNoAmount">500</span>원</div>
-            <div class="input-group">
-                <input type="number" id="noInput" placeholder="배팅 금액 입력">
-                <button onclick="placeBet('no')" class="btn-no">배팅하기</button>
+        <h2 id="topicTitle">주제: B가 A를 이길 것이다</h2>
+        <h2>실시간 여론 예측 현황</h2>
+        
+        <div class="progress-container">
+            <div id="yesProgress">찬성 (Yes) (44.4%)</div>
+            <div id="noProgress">반대 (No) (55.6%)</div>
+        </div>
+
+        <div class="card-container">
+            <div class="card yes-card">
+                <h3>찬성 (Yes)</h3>
+                <div class="dividend" id="yesOdds">2.25배</div>
+                <div class="total-amount">총 배팅액: <span id="totalYesAmount">400</span>원</div>
+                <div class="input-group">
+                    <input type="number" id="yesInput" placeholder="배팅 금액 입력">
+                    <button onclick="placeBet('yes')" class="btn-yes">배팅하기</button>
+                </div>
+            </div>
+
+            <div class="card no-card">
+                <h3>반대 (No)</h3>
+                <div class="dividend" id="noOdds">1.80배</div>
+                <div class="total-amount">총 배팅액: <span id="totalNoAmount">500</span>원</div>
+                <div class="input-group">
+                    <input type="number" id="noInput" placeholder="배팅 금액 입력">
+                    <button onclick="placeBet('no')" class="btn-no">배팅하기</button>
+                </div>
             </div>
         </div>
+    </div>
+
+    <div id="adminTab" class="tab-content">
+        <h2>⚙️ 교수자/관리자 제어 패널</h2>
+        <p>실험 라운드를 제어하고 관리하는 공간입니다.</p>
+        <div style="background: #e8f4fd; padding: 15px; border-radius: 5px; border-left: 5px solid #3498db; margin-bottom: 20px;">
+            <strong>안내</strong>: 다음 라운드로 진행하더라도 누적된 총 배팅액과 배당률 그래프는 리셋되지 않고 유지됩니다.
+        </div>
+        <button onclick="triggerNextRound()" style="padding: 15px 30px; font-size: 18px; background-color: #e67e22; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
+            다음 라운드 시작 (주제/배당률 유지) ➡️
+        </button>
     </div>
 
     <script>
         const socket = io();
 
-        // 실시간 배당률 계산 및 화면 업데이트 함수
+        // 닉네임을 서버에 명확하게 등록하는 원본 로직 복원
+        function setNickname() {
+            const name = document.getElementById('nickInput').value.trim();
+            if(!name) {
+                alert('닉네임을 입력해야 마켓에 참여할 수 있습니다.');
+                return;
+            }
+            document.getElementById('userName').innerText = name;
+            document.getElementById('nickModal').style.display = 'none';
+            
+            // 서버에 유저 세션 생성을 요청하는 원본 핵심 신호
+            socket.emit('registerUser', { userName: name });
+        }
+
+        // 탭 토글 처리 로직
+        function switchTab(target) {
+            if(target === 'user') {
+                document.getElementById('tabUserBtn').classList.add('active');
+                document.getElementById('tabAdminBtn').classList.remove('active');
+                document.getElementById('userTab').classList.add('active');
+                document.getElementById('adminTab').classList.remove('active');
+            } else {
+                document.getElementById('tabUserBtn').classList.remove('active');
+                document.getElementById('tabAdminBtn').classList.add('active');
+                document.getElementById('userTab').classList.remove('active');
+                document.getElementById('adminTab').classList.add('active');
+            }
+        }
+
+        // 마켓 전반적인 데이터를 실시간 바인딩 갱신하는 함수
         function updateScreen(data) {
+            if(data.round) {
+                document.getElementById('roundText').innerText = `제 ${data.round} 라운드`;
+            }
+            if(data.topic) {
+                document.getElementById('topicTitle').innerText = `주제: ${data.topic}`;
+            }
+
             const totalYes = data.totalYes || 1;
             const totalNo = data.totalNo || 1;
             const totalSum = totalYes + totalNo;
 
-            // 배당률 계산 로직 (기존 식 그대로 유지)
             const yesOdds = (totalSum / totalYes).toFixed(2);
             const noOdds = (totalSum / totalNo).toFixed(2);
 
             const yesPercent = ((totalYes / totalSum) * 100).toFixed(1);
             const noPercent = ((totalNo / totalSum) * 100).toFixed(1);
 
-            // 데이터 반영
             document.getElementById('totalYesAmount').innerText = totalYes;
             document.getElementById('totalNoAmount').innerText = totalNo;
             document.getElementById('yesOdds').innerText = yesOdds + '배';
             document.getElementById('noOdds').innerText = noOdds + '배';
 
-            // 프로그레스 바 반영
             document.getElementById('yesProgress').style.width = yesPercent + '%';
             document.getElementById('yesProgress').innerText = `찬성 (Yes) (${yesPercent}%)`;
             document.getElementById('noProgress').style.width = noPercent + '%';
             document.getElementById('noProgress').innerText = `반대 (No) (${noPercent}%)`;
+            
+            // 최초 동기화 시 서버가 주는 자산 값이 있을 경우 연동
+            if(data.userMoney !== undefined) {
+                document.getElementById('userMoney').innerText = data.userMoney.toLocaleString();
+            }
         }
 
         socket.on('initStatus', (data) => { updateScreen(data); });
         socket.on('marketUpdate', (data) => { updateScreen(data); });
         socket.on('roundStarted', (data) => { updateScreen(data); });
+        
+        // 서버가 검증 완료 후 개인 잔액을 실시간으로 내려줄 때 수신하는 원본 로직
+        socket.on('moneyUpdate', (data) => {
+            if(data.userMoney !== undefined) {
+                document.getElementById('userMoney').innerText = data.userMoney.toLocaleString();
+            }
+        });
 
-        // 배팅하기 버튼 클릭 시 서버로 전송
+        socket.on('betError', (data) => {
+            alert(data.message);
+        });
+
+        // 배팅 요청을 서버로 안전하게 위임하는 구조 (자산 보존식)
         function placeBet(type) {
             const inputId = type === 'yes' ? 'yesInput' : 'noInput';
-            const amount = document.getElementById(inputId).value;
+            const amountInput = document.getElementById(inputId);
+            const betAmount = parseInt(amountInput.value);
             const userName = document.getElementById('userName').innerText;
 
-            if(!amount || amount <= 0) {
+            if(userName === '미설정') {
+                alert('닉네임을 먼저 설정해주세요.');
+                return;
+            }
+            if(!betAmount || betAmount <= 0) {
                 alert('올바른 배팅 금액을 입력해주세요.');
                 return;
             }
 
+            // 클라이언트 단에서 가짜로 깎는 것이 아니라, 서버로 안전하게 배팅 신호를 보냅니다.
             socket.emit('placeBet', {
                 type: type,
-                amount: amount,
+                amount: betAmount,
                 userName: userName
             });
 
-            document.getElementById(inputId).value = '';
+            amountInput.value = '';
+        }
+
+        function triggerNextRound() {
+            socket.emit('nextRound');
+            alert('다음 라운드가 시작되었습니다! 기존 누적 판돈과 배당률이 그대로 이어집니다.');
         }
     </script>
 </body>
