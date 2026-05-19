@@ -175,7 +175,7 @@ io.on('connection', (socket) => {
         emitAdminDashboard();
     });
 
-    // [관리자] 결과 정산 및 배당금 지급 (판돈 유지 기능 유지)
+    // [관리자] 결과 정산 및 배당금 지급 (판돈 유지 기능)
     socket.on('admin_settle', (winningOption) => {
         const odds = calculateOdds();
         const winOdds = parseFloat(winningOption === 'A' ? odds.oddsA : odds.oddsB);
@@ -213,7 +213,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // [사용자] 베팅 처리 (★ 문구 '베팅'으로 완벽 수정)
+    // [사용자] 베팅 처리 (★ '배팅' ➔ '베팅' 전수 교정 완료)
     socket.on('user_bet', (data) => {
         if (!marketState.isOrderOpen) {
             socket.emit('alert', '현재 라운드 베팅이 닫혀있습니다.');
